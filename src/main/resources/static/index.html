@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Productos</title>
+    <style>
+        :root {
+            --bg-color: #0d0b14;       
+            --card-bg: #161224;        
+            --input-bg: #221c33;       
+            --text-color: #f3f1f6;     
+            --text-muted: #a19bb0;    
+            --primary: #8b5cf6;       
+            --primary-hover: #7c3aed; 
+            --accent: #ef4444;        
+            --border-radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background-color: var(--accent);
+            border-radius: 2px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid #2d2547;
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group-inline {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        input {
+            flex: 1;
+            background-color: var(--input-bg);
+            border: 1px solid #3c325c;
+            color: var(--text-color);
+            padding: 10px 14px;
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .empty-state {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-style: italic;
+            border: 1px dashed #3c325c;
+            padding: 20px;
+            text-align: center;
+            border-radius: var(--border-radius);
+        }
+
+        .product-item {
+            background: #1e1933;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            border-left: 3px solid var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- Sección: Agregar Producto -->
+        <div class="card">
+            <h2>Agregar Producto</h2>
+            <form id="productForm" class="form-group-inline">
+                <input type="text" id="nombre" placeholder="Nombre del producto (ej. Pollo)" required>
+                <!-- SOLUCIÓN: Se agregó step="any" para permitir decimales -->
+                <input type="number" id="precio" step="any" min="0.01" placeholder="Precio" style="max-width: 120px;" required>
+                <input type="number" id="stock" step="1" min="0" placeholder="Stock" style="max-width: 100px;" required>
+                <button type="submit">Guardar</button>
+            </form>
+        </div>
+
+        <!-- Sección: Buscar por ID -->
+        <div class="card">
+            <h2>Buscar por ID</h2>
+            <div class="form-group-inline">
+                <input type="text" id="searchId" placeholder="ID del producto">
+                <button type="button" id="btnBuscar" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary);">
+                    Buscar
+                </button>
+            </div>
+            <div id="searchResult" style="margin-top: 12px; color: var(--text-muted); font-size: 0.95rem;"></div>
+        </div>
+
+        <!-- Sección: Lista de Productos -->
+        <div class="card">
+            <h2>Lista de Productos</h2>
+            <div id="listaProductos">
+                <div class="empty-state">Cargando productos...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // La ruta debe coincidir con @RequestMapping("/api/productos") del controlador
+        const API_URL = '/api/productos';
+
+        // 1. CARGAR PRODUCTOS AL INICIAR
+        async function cargarProductos() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Error al obtener productos: ' + response.status);
+                const productos = await response.json();
+                
+                const listaDiv = document.getElementById('listaProductos');
+                if (!productos || productos.length === 0) {
+                    listaDiv.innerHTML = '<div class="empty-state">No hay productos guardados.</div>';
+                    return;
+                }
+                
+                listaDiv.innerHTML = '';
+                productos.forEach(prod => {
+                    listaDiv.innerHTML += `
+                        <div class="product-item">
+                            <span><strong>ID: ${prod.id}</strong> - ${prod.nombre} <small style="color: var(--text-muted);">(stock: ${prod.stock})</small></span>
+                            <span style="color: #4ade80;">$${prod.precio}</span>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                console.error(error);
+                document.getElementById('listaProductos').innerHTML = `<div class="empty-state">No se pudo cargar la lista (revisa que el backend esté corriendo).</div>`;
+            }
+        }
+
+        // 2. GUARDAR NUEVO PRODUCTO
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const nombre = document.getElementById('nombre').value;
+            const precio = parseFloat(document.getElementById('precio').value);
+            const stock = parseInt(document.getElementById('stock').value, 10);
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ nombre: nombre, precio: precio, stock: stock })
+                });
+
+                if (response.ok || response.status === 201 || response.status === 200) {
+                    alert('¡Producto guardado con éxito!');
+                    document.getElementById('productForm').reset();
+                    cargarProductos(); 
+                } else {
+                    const err = await response.json().catch(() => null);
+                    const detalle = err && err.details ? '\n' + Object.values(err.details).join('\n') : '';
+                    alert('Error ' + response.status + ': ' + (err ? err.message : 'no se pudo guardar') + detalle);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Hubo un problema de comunicación con el backend.');
+            }
+        });
+
+        // 3. BUSCAR PRODUCTO POR ID
+        document.getElementById('btnBuscar').addEventListener('click', async () => {
+            const id = document.getElementById('searchId').value;
+            const resultDiv = document.getElementById('searchResult');
+            if(!id) return;
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`);
+                if(response.ok) {
+                    const prod = await response.json();
+                    resultDiv.innerHTML = `<span style="color: #4ade80;">Encontrado:</span> ${prod.nombre} - <strong>$${prod.precio}</strong>`;
+                } else {
+                    resultDiv.innerHTML = `<span style="color: var(--accent);">Producto no encontrado (ID: ${id})</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `Error de conexión con el servidor.`;
+            }
+        });
+
+        window.onload = cargarProductos;
+    </script>
+</body>
+</html>
